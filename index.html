@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal AI Chat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+
+    <style>
+        :root {
+            /* UX Theme Variables */
+            --bg-color: #f0f4f9;
+            --chat-bg: #ffffff;
+            --text-primary: #1f1f1f;
+            --text-secondary: #444746;
+            --border-color: #e3e3e3;
+            --accent-color: #0b57d0;
+            --user-bubble-bg: #e3e3e3;
+            --ai-bubble-bg: transparent;
+            --sidebar-bg: #f0f4f9;
+            --font-family: 'Inter', sans-serif;
+            --transition-speed: 0.3s;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Layout --- */
+        .app-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: 280px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+            transition: transform var(--transition-speed) ease;
+        }
+
+        .new-chat-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            padding: 0.75rem 1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: var(--font-family);
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+        }
+
+        .new-chat-btn:hover {
+            background-color: #e8eaed;
+        }
+
+        .history-list {
+            margin-top: 2rem;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 0.5rem;
+        }
+
+        .history-item:hover {
+            background-color: #e8eaed;
+        }
+
+        /* --- Main Chat Area --- */
+        .main-chat {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--chat-bg);
+            border-radius: 24px 0 0 24px; /* Gemini-style rounded corner */
+            margin-top: 10px;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.02);
+            position: relative;
+        }
+
+        .header {
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        /* --- Messages Container --- */
+        .messages-container {
+            flex-grow: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            scroll-behavior: smooth;
+        }
+
+        .message-row {
+            display: flex;
+            gap: 1rem;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeIn 0.3s forwards ease-out;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-row.user {
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 1.2rem;
+        }
+
+        .avatar.ai { background-color: #fff; border: 1px solid var(--border-color); color: var(--accent-color); }
+        .avatar.user { background-color: var(--accent-color); color: white; }
+
+        .message-content {
+            padding: 0.5rem 0;
+            line-height: 1.6;
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+
+        .message-row.user .message-content {
+            background-color: var(--user-bubble-bg);
+            padding: 0.75rem 1.25rem;
+            border-radius: 20px 20px 4px 20px;
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 10px 0;
+        }
+        .dot {
+            width: 6px; height: 6px; background: var(--text-secondary); border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* --- Input Area --- */
+        .input-container {
+            padding: 1.5rem 2rem 2rem;
+            max-width: 850px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .input-box {
+            display: flex;
+            align-items: flex-end;
+            background-color: var(--bg-color);
+            border-radius: 24px;
+            padding: 0.5rem 1rem;
+            border: 1px solid transparent;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .input-box:focus-within {
+            border-color: var(--border-color);
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        textarea {
+            flex-grow: 1;
+            border: none;
+            background: transparent;
+            resize: none;
+            padding: 0.75rem 0.5rem;
+            font-family: var(--font-family);
+            font-size: 1rem;
+            color: var(--text-primary);
+            max-height: 150px;
+            outline: none;
+        }
+
+        textarea::placeholder {
+            color: #757575;
+        }
+
+        .send-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.75rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s, background-color 0.2s;
+        }
+
+        .send-btn:hover {
+            color: var(--accent-color);
+            background-color: #e8eaed;
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-chat { border-radius: 0; margin-top: 0; }
+            .message-row { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <aside class="sidebar">
+            <button class="new-chat-btn" onclick="clearChat()">
+                <span class="material-symbols-outlined">add</span>
+                New chat
+            </button>
+            <div class="history-list">
+                <div class="history-item">How to center a div</div>
+                <div class="history-item">Explain quantum physics</div>
+                <div class="history-item">Write a haiku about code</div>
+            </div>
+        </aside>
+
+        <main class="main-chat">
+            <header class="header">
+                <h1>Universal AI</h1>
+                <span class="material-symbols-outlined" style="color: var(--text-secondary); cursor: pointer;">menu</span>
+            </header>
+
+            <div class="messages-container" id="chat-box">
+                <div class="message-row ai" id="welcome-message">
+                    <div class="avatar ai"><span class="material-symbols-outlined">auto_awesome</span></div>
+                    <div class="message-content">
+                        <h2>Hello there.</h2>
+                        <p style="color: var(--text-secondary); margin-top: 0.5rem;">How can I help you today?</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <div class="input-box">
+                    <textarea 
+                        id="user-input" 
+                        rows="1" 
+                        placeholder="Enter a prompt here"
+                        oninput="autoResize(this)"
+                        onkeydown="handleEnter(event)"></textarea>
+                    <button class="send-btn" id="send-btn" onclick="handleSend()">
+                        <span class="material-symbols-outlined">send</span>
+                    </button>
+                </div>
+                <div style="text-align: center; margin-top: 0.5rem; font-size: 0.75rem; color: #757575;">
+                    Universal AI can make mistakes. Consider verifying important information.
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const welcomeMessage = document.getElementById('welcome-message');
+
+        // UX: Auto-resize textarea based on content
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+            
+            // Enable/disable send button based on input
+            if(textarea.value.trim() !== '') {
+                sendBtn.style.color = 'var(--accent-color)';
+            } else {
+                sendBtn.style.color = 'var(--text-secondary)';
+            }
+        }
+
+        // Handle Enter key (prevent default new line unless Shift is held)
+        function handleEnter(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+            }
+        }
+
+        // Main Send Logic
+        function handleSend() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            // Hide welcome message if it's the first prompt
+            if (welcomeMessage) welcomeMessage.style.display = 'none';
+
+            // 1. Add User Message
+            addMessage(text, 'user');
+            
+            // Reset Input
+            userInput.value = '';
+            autoResize(userInput);
+            userInput.focus();
+
+            // 2. Show AI Typing Indicator
+            const typingId = showTypingIndicator();
+
+            // 3. Simulate AI Network Request (Mocking an API call)
+            // IN PRODUCTION: Replace this setTimeout with a real fetch() to your LLM API
+            setTimeout(() => {
+                removeTypingIndicator(typingId);
+                const aiResponse = generateMockResponse(text);
+                addMessage(aiResponse, 'ai');
+            }, 1500 + Math.random() * 1000); // Random delay between 1.5s - 2.5s for realism
+        }
+
+        // DOM Manipulation: Add a message to the UI
+        function addMessage(text, sender) {
+            const row = document.createElement('div');
+            row.className = `message-row ${sender}`;
+            
+            const avatarIcon = sender === 'user' ? 'person' : 'auto_awesome';
+            
+            // Format text (basic preservation of line breaks)
+            const formattedText = text.replace(/\n/g, '<br>');
+
+            row.innerHTML = `
+                <div class="avatar ${sender}">
+                    <span class="material-symbols-outlined">${avatarIcon}</span>
+                </div>
+                <div class="message-content">${formattedText}</div>
+            `;
+            
+            chatBox.appendChild(row);
+            scrollToBottom();
+        }
+
+        // UX: Typing Indicator
+        function showTypingIndicator() {
+            const id = 'typing-' + Date.now();
+            const row = document.createElement('div');
+            row.className = `message-row ai`;
+            row.id = id;
+            
+            row.innerHTML = `
+                <div class="avatar ai">
+                    <span class="material-symbols-outlined">auto_awesome</span>
+                </div>
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                    </div>
+                </div>
+            `;
+            
+            chatBox.appendChild(row);
+            scrollToBottom();
+            return id;
+        }
+
+        function removeTypingIndicator(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+
+        // UX: Keep scroll at the bottom
+        function scrollToBottom() {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // UX: Clear Chat functionality
+        function clearChat() {
+            chatBox.innerHTML = '';
+            if (welcomeMessage) {
+                welcomeMessage.style.display = 'flex';
+                chatBox.appendChild(welcomeMessage);
+            }
+        }
+
+        // Mock AI Logic (For demonstration purposes)
+        function generateMockResponse(prompt) {
+            const lowerPrompt = prompt.toLowerCase();
+            if (lowerPrompt.includes('hello') || lowerPrompt.includes('hi')) {
+                return "Hello! I'm operating flawlessly without any build tools. How can I assist your frontend development today?";
+            } else if (lowerPrompt.includes('code') || lowerPrompt.includes('html')) {
+                return "Writing vanilla code is incredibly satisfying. It forces you to understand the underlying DOM APIs rather than relying on abstractions.";
+            } else {
+                return "That's an interesting point! As a mock AI, I don't have a backend connected right now. But notice how smooth this UI feels? That's the power of native web technologies.";
+            }
+        }
+    </script>
+</body>
+  </html>
+  
